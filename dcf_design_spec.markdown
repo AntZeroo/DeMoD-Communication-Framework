@@ -1,6 +1,6 @@
 # DeMoD Communications Framework Design Specification (FOSS Shareware Version)
 
-**Version 5.0.0 | August 14, 2025**  
+**Version 1.0.0 | August 14, 2025**  
 **Developed by DeMoD LLC**  
 **Contact:** info@demodllc.example  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
