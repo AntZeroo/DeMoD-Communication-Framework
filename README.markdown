@@ -4,7 +4,7 @@
 **Developed by DeMoD LLC**  
 **Contact:** info@demodllc.example  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
-[![Build Status](https://github.com/demodllc/dcf/workflows/CI/badge.svg)](https://github.com/demodllc/dcf/actions)  
+ 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)  
 
 ## Overview
