@@ -2,7 +2,7 @@
 
 **Version 1.0.0 | August 14, 2025**  
 **Developed by DeMoD LLC**  
-**Contact:** info@demodllc.example  
+**Contact:** info@demod.ltd(N/A)
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 
 ## Table of Contents
