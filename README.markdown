@@ -3,7 +3,7 @@
 **Version 5.0.0 | August 14, 2025**  
 **Developed by DeMoD LLC**   
 **License:** GNU General Public License v3.0 (GPL-3.0)  
- 
+ [webpage](https://demod.ltd/DeMoD.html#)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)  
 
 
@@ -320,7 +320,6 @@ Contributions are welcome! Follow these steps:
 3. Add tests and code (follow style: `perltidy`, `black`, `ktlint`, `swiftformat`).
 4. Submit a PR with a clear description using the [PR template](docs/PR_TEMPLATE.md).
 5. Discuss issues via [GitHub Issues](https://github.com/demodllc/dcf/issues) using the [issue template](docs/ISSUE_TEMPLATE.md).
-[webpage](https://demod.ltd/DeMoD.html#)
 All contributions must adhere to GPL-3.0 and maintain export compliance.
 
 ## Documentation
