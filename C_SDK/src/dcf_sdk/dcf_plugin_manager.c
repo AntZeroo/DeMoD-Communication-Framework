@@ -3,49 +3,58 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct PluginManager {
+struct DCFPluginManager {
     void* handle;
     ITransport* transport;
 };
 
-PluginManager* plugin_manager_new(void) {
-    PluginManager* manager = calloc(1, sizeof(PluginManager));
+DCFPluginManager* dcf_plugin_manager_new(void) {
+    DCFPluginManager* manager = calloc(1, sizeof(DCFPluginManager));
     if (!manager) return NULL;
     return manager;
 }
 
-DCFError plugin_manager_load(PluginManager* manager, const char* plugin_path) {
-    if (!manager || !plugin_path) return DCF_ERR_NULL_PTR;
-    manager->handle = dlopen(plugin_path, RTLD_LAZY);
+DCFError dcf_plugin_manager_load(DCFPluginManager* manager, DCFConfig* config) {
+    if (!manager || !config) return DCF_ERR_NULL_PTR;
+    char* path;
+    DCFError err = dcf_config_get_plugin_path(config, &path);
+    if (err != DCF_SUCCESS || !path) return DCF_ERR_PLUGIN_FAIL;
+    manager->handle = dlopen(path, RTLD_LAZY);
+    free(path);
     if (!manager->handle) return DCF_ERR_PLUGIN_FAIL;
-    void* (*create_plugin)(void) = dlsym(manager->handle, "create_plugin");
-    const char* (*get_version)(void) = dlsym(manager->handle, "get_plugin_version");
-    if (!create_plugin || !get_version) {
+    typedef ITransport* (*create_fn)(void);
+    typedef const char* (*version_fn)(void);
+    create_fn create = (create_fn)dlsym(manager->handle, "create_plugin");
+    version_fn get_version = (version_fn)dlsym(manager->handle, "get_plugin_version");
+    if (!create || !get_version || strcmp(get_version(), "1.0") != 0) {
         dlclose(manager->handle);
         return DCF_ERR_PLUGIN_FAIL;
     }
-    if (strcmp(get_version(), "1.0") != 0) {
-        dlclose(manager->handle);
-        return DCF_ERR_PLUGIN_FAIL;
-    }
-    manager->transport = create_plugin();
+    manager->transport = create();
     if (!manager->transport) {
         dlclose(manager->handle);
         return DCF_ERR_PLUGIN_FAIL;
     }
+    char* host;
+    err = dcf_config_get_host(config, &host);
+    if (err != DCF_SUCCESS) return err;
+    int port = dcf_config_get_port(config);
+    if (!manager->transport->setup(manager->transport, host, port)) {
+        free(host);
+        return DCF_ERR_PLUGIN_FAIL;
+    }
+    free(host);
     return DCF_SUCCESS;
 }
 
-ITransport* plugin_manager_get_transport(PluginManager* manager) {
+ITransport* dcf_plugin_manager_get_transport(DCFPluginManager* manager) {
     if (!manager) return NULL;
     return manager->transport;
 }
 
-void plugin_manager_free(PluginManager* manager) {
+void dcf_plugin_manager_free(DCFPluginManager* manager) {
     if (!manager) return;
-    if (manager->transport && manager->transport->destroy) {
-        manager->transport->destroy(manager->transport);
-    }
+    if (manager->transport && manager->transport->destroy) manager->transport->destroy(manager->transport);
     if (manager->handle) dlclose(manager->handle);
     free(manager);
 }
