@@ -1,8 +1,8 @@
 #include "dcf_client.h"
+#include "dcf_serialization.h"
 #include <stdlib.h>
 #include <string.h>
 #include <uuid/uuid.h>
-#include "dcf_serialization.h"
 
 struct DCFClient {
     DCFConfig* config;
@@ -10,11 +10,15 @@ struct DCFClient {
     DCFRedundancy* redundancy;
     DCFPluginManager* plugin_mgr;
     bool running;
+    int log_level;  // Default: 1 (info)
+    DCFMode current_mode;  // For AUTO mode adjustments
 };
 
 DCFClient* dcf_client_new(void) {
     DCFClient* client = calloc(1, sizeof(DCFClient));
     if (!client) return NULL;
+    client->log_level = 1;  // Default: info
+    client->current_mode = AUTO_MODE;  // Default to AUTO
     return client;
 }
 
@@ -34,6 +38,10 @@ DCFError dcf_client_initialize(DCFClient* client, const char* config_path) {
     if (!client->redundancy) return DCF_ERR_MALLOC_FAIL;
     err = dcf_redundancy_initialize(client->redundancy, client->config, client->networking);
     if (err != DCF_SUCCESS) return err;
+    // For AUTO mode, listen for master assignments
+    if (client->config->mode == AUTO_MODE) {
+        dcf_client_set_mode(client, AUTO_MODE);  // Set initial mode
+    }
     return DCF_SUCCESS;
 }
 
@@ -41,9 +49,9 @@ DCFError dcf_client_start(DCFClient* client) {
     if (!client) return DCF_ERR_NULL_PTR;
     if (client->running) return DCF_ERR_INVALID_STATE;
     client->running = true;
-    DCFError err = dcf_networking_start(client->networking);
+    DCFError err = dcf_networking_start(client->networking, client->current_mode);
     if (err != DCF_SUCCESS) return err;
-    err = dcf_redundancy_start(client->redundancy);
+    err = dcf_redundancy_start(client->redundancy, client->current_mode);
     if (err != DCF_SUCCESS) return err;
     return DCF_SUCCESS;
 }
@@ -71,7 +79,7 @@ DCFError dcf_client_send_message(DCFClient* client, const char* data, const char
     free(node_id);
     if (err != DCF_SUCCESS) return err;
     char* target = (char*)recipient;
-    if (client->config->mode == P2P_MODE) {
+    if (client->current_mode == P2P_MODE || client->current_mode == AUTO_MODE) {
         err = dcf_redundancy_get_optimal_route(client->redundancy, recipient, &target);
         if (err != DCF_SUCCESS) { free(serialized); return err; }
     }
@@ -85,11 +93,9 @@ DCFError dcf_client_send_message(DCFClient* client, const char* data, const char
         size_t response_len;
         uint8_t* response_data = transport->receive(transport, &response_len);
         if (response_data) {
-            char* response_msg;
             char* sender;
-            err = dcf_deserialize_message(response_data, response_len, &response_msg, &sender);
+            err = dcf_deserialize_message(response_data, response_len, response_out, &sender);
             free(response_data);
-            if (err == DCF_SUCCESS) *response_out = response_msg;
             free(sender);
         } else {
             err = DCF_ERR_NETWORK_FAIL;
@@ -118,6 +124,20 @@ DCFError dcf_client_receive_message(DCFClient* client, char** message_out, char*
         return err;
     }
     return dcf_networking_receive(client->networking, message_out, sender_out);
+}
+
+DCFError dcf_client_set_mode(DCFClient* client, DCFMode mode) {
+    if (!client) return DCF_ERR_NULL_PTR;
+    client->current_mode = mode;
+    // Reconfigure networking and redundancy for new mode (placeholder)
+    return DCF_SUCCESS;
+}
+
+DCFError dcf_client_set_log_level(DCFClient* client, int level) {
+    if (!client) return DCF_ERR_NULL_PTR;
+    client->log_level = level;
+    // Apply log level (placeholder)
+    return DCF_SUCCESS;
 }
 
 void dcf_client_free(DCFClient* client) {
