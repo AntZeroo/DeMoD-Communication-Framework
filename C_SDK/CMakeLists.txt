@@ -4,18 +4,12 @@ find_package(Protobuf-c REQUIRED)
 find_package(UUID REQUIRED)
 find_package(CJSON REQUIRED)
 find_package(gRPC CONFIG REQUIRED)
-add_library(dcf_sdk STATIC
-    src/dcf_sdk/dcf_client.c
-    src/dcf_sdk/dcf_config.c
-    src/dcf_sdk/dcf_networking.c
-    src/dcf_sdk/dcf_redundancy.c
-    src/dcf_sdk/dcf_serialization.c
-    src/dcf_sdk/dcf_plugin_manager.c
-    src/dcf_sdk/grpc_wrapper.cpp
-    proto/messages.pb-c.c
-)
-target_include_directories(dcf_sdk PUBLIC include/dcf_sdk proto)
-target_link_libraries(dcf_sdk PRIVATE protobuf-c uuid cjson gRPC::grpc++)
+find_package(Ncurses REQUIRED)  // For TUI
+include_directories(include/dcf_sdk proto)
+add_library(dcf_sdk STATIC src/dcf_sdk/dcf_client.c src/dcf_sdk/dcf_config.c src/dcf_sdk/dcf_networking.c src/dcf_sdk/dcf_redundancy.c src/dcf_sdk/dcf_serialization.c src/dcf_sdk/dcf_plugin_manager.c src/dcf_sdk/dcf_interface.c src/dcf_sdk/grpc_wrapper.cpp proto/messages.pb-c.c)
+target_link_libraries(dcf_sdk PRIVATE protobuf-c uuid cjson gRPC::grpc++ ncurses)
+add_executable(dcf examples/dcf_cli.c)
+target_link_libraries(dcf PRIVATE dcf_sdk)
 add_executable(p2p examples/p2p.c)
 target_link_libraries(p2p PRIVATE dcf_sdk)
 add_executable(test_redundancy tests/test_redundancy.c)
