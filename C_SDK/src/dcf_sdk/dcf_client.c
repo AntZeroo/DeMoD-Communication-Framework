@@ -1,17 +1,9 @@
+
 #include "dcf_client.h"
-#include "dcf_plugin_manager.h"
-#include "messages.pb-c.h"
-#include <cjson/cJSON.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <uuid/uuid.h>
-
-struct DCFClient {
-    cJSON* config;
-    PluginManager* plugin_manager;
-    DCFRedundancy* redundancy;
-    void* grpc_handle; // Opaque gRPC handle
-};
 
 DCFClient* dcf_client_new(void) {
     DCFClient* client = calloc(1, sizeof(DCFClient));
@@ -19,116 +11,84 @@ DCFClient* dcf_client_new(void) {
     return client;
 }
 
+DCFError dcf_client_free(DCFClient* client) {
+    if (!client) return DCF_ERR_NULL_PTR;
+    if (client->config) dcf_config_free(client->config);
+    if (client->net) dcf_networking_free(client->net);
+    if (client->redundancy) dcf_redundancy_free(client->redundancy);
+    if (client->plugin_mgr) dcf_plugin_manager_free(client->plugin_mgr);
+    free(client);
+    return DCF_SUCCESS;
+}
+
 DCFError dcf_client_initialize(DCFClient* client, const char* config_path) {
     if (!client || !config_path) return DCF_ERR_NULL_PTR;
-
-    // Parse config
-    FILE* fp = fopen(config_path, "r");
-    if (!fp) return DCF_ERR_CONFIG_INVALID;
-    fseek(fp, 0, SEEK_END);
-    long size = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-    char* buffer = calloc(1, size + 1);
-    if (!buffer) { fclose(fp); return DCF_ERR_MALLOC_FAIL; }
-    fread(buffer, 1, size, fp);
-    fclose(fp);
-    client->config = cJSON_Parse(buffer);
-    free(buffer);
+    DCFError err;
+    client->config = dcf_config_load(config_path);
     if (!client->config) return DCF_ERR_CONFIG_INVALID;
-
-    // Initialize plugin manager
-    client->plugin_manager = plugin_manager_new();
-    if (!client->plugin_manager) return DCF_ERR_MALLOC_FAIL;
-    cJSON* plugin = cJSON_GetObjectItem(client->config, "plugins");
-    if (plugin) {
-        cJSON* transport = cJSON_GetObjectItem(plugin, "transport");
-        if (transport && cJSON_IsString(transport)) {
-            DCFError err = plugin_manager_load(client->plugin_manager, transport->valuestring);
-            if (err != DCF_SUCCESS) return err;
-        }
-    }
-
-    // Initialize redundancy
-    cJSON* peers = cJSON_GetObjectItem(client->config, "peers");
-    if (!peers || !cJSON_IsArray(peers)) return DCF_ERR_CONFIG_INVALID;
-    int peer_count = cJSON_GetArraySize(peers);
-    const char** peer_list = calloc(peer_count, sizeof(char*));
-    if (!peer_list) return DCF_ERR_MALLOC_FAIL;
-    for (int i = 0; i < peer_count; i++) {
-        cJSON* peer = cJSON_GetArrayItem(peers, i);
-        peer_list[i] = peer->valuestring;
-    }
-    int rtt_threshold = cJSON_GetObjectItem(client->config, "group_rtt_threshold")->valueint;
-    DCFError err = dcf_redundancy_init(&client->redundancy, peer_list, peer_count, rtt_threshold);
-    free(peer_list);
+    client->net = dcf_networking_new();
+    if (!client->net) return DCF_ERR_MALLOC_FAIL;
+    err = dcf_networking_initialize(client->net, client->config);
     if (err != DCF_SUCCESS) return err;
-
-    // Initialize gRPC (placeholder)
-    client->grpc_handle = NULL; // Actual gRPC init in grpc_wrapper.cpp
+    client->plugin_mgr = dcf_plugin_manager_new();
+    if (!client->plugin_mgr) return DCF_ERR_MALLOC_FAIL;
+    err = dcf_plugin_manager_initialize(client->plugin_mgr, client->config);
+    if (err != DCF_SUCCESS) return err;
+    client->redundancy = dcf_redundancy_new(client->config);
+    if (!client->redundancy) return DCF_ERR_MALLOC_FAIL;
+    err = dcf_redundancy_initialize(client->redundancy, client->config);
+    if (err != DCF_SUCCESS) return err;
     return DCF_SUCCESS;
 }
 
 DCFError dcf_client_start(DCFClient* client) {
     if (!client) return DCF_ERR_NULL_PTR;
-    // Start gRPC or plugin transport (placeholder)
+    client->running = true;
+    DCFError err = dcf_networking_start(client->net);
+    if (err != DCF_SUCCESS) return err;
+    err = dcf_redundancy_start(client->redundancy);
+    if (err != DCF_SUCCESS) return err;
     return DCF_SUCCESS;
 }
 
-DCFError dcf_client_send_message(DCFClient* client, const char* data, const char* recipient, char** response_out) {
-    if (!client || !data || !recipient || !response_out) return DCF_ERR_NULL_PTR;
+DCFError dcf_client_stop(DCFClient* client) {
+    if (!client) return DCF_ERR_NULL_PTR;
+    client->running = false;
+    DCFError err = dcf_networking_stop(client->net);
+    if (err != DCF_SUCCESS) return err;
+    err = dcf_redundancy_stop(client->redundancy);
+    if (err != DCF_SUCCESS) return err;
+    return DCF_SUCCESS;
+}
 
-    // Create Protobuf message
-    DCFMessage msg = DCF_MESSAGE__INIT;
-    uuid_t sender_uuid;
-    uuid_generate(sender_uuid);
-    char sender_str[37];
-    uuid_unparse(sender_uuid, sender_str);
-    msg.sender = sender_str;
-    msg.recipient = (char*)recipient;
-    msg.data.data = (uint8_t*)data;
-    msg.data.len = strlen(data);
-    msg.timestamp = time(NULL);
-
-    // Serialize
-    size_t packed_size = dcf_message__get_packed_size(&msg);
-    uint8_t* buffer = calloc(1, packed_size);
-    if (!buffer) return DCF_ERR_MALLOC_FAIL;
-    dcf_message__pack(&msg, buffer);
-
-    // Send via plugin or gRPC
-    ITransport* transport = plugin_manager_get_transport(client->plugin_manager);
-    DCFError err = DCF_ERR_NETWORK_FAIL;
-    if (transport) {
-        if (transport->send(transport, buffer, packed_size, recipient)) {
-            uint8_t* response_data;
-            size_t response_size;
-            response_data = transport->receive(transport, &response_size);
-            if (response_data) {
-                DCFMessage* response_msg = dcf_message__unpack(NULL, response_size, response_data);
-                if (response_msg) {
-                    *response_out = strdup(response_msg->data.data);
-                    dcf_message__free_unpacked(response_msg, NULL);
-                    err = DCF_SUCCESS;
-                }
-                free(response_data);
-            }
+DCFError dcf_client_send_message(DCFClient* client, const char* data, const char* recipient) {
+    if (!client || !data || !recipient) return DCF_ERR_NULL_PTR;
+    if (!client->running) return DCF_ERR_INVALID_STATE;
+    char* serialized = dcf_serialize_message(data, recipient, client->config->node_id);
+    if (!serialized) return DCF_ERR_SERIALIZATION_FAIL;
+    DCFError err;
+    if (client->config->mode == P2P_MODE) {
+        char* route = dcf_redundancy_get_optimal_route(client->redundancy, recipient);
+        if (!route) {
+            free(serialized);
+            return DCF_ERR_ROUTE_NOT_FOUND;
         }
+        err = dcf_networking_send(client->net, serialized, strlen(serialized), route);
+        free(route);
     } else {
-        // gRPC send (placeholder)
+        err = dcf_networking_send(client->net, serialized, strlen(serialized), recipient);
     }
-    free(buffer);
+    free(serialized);
     return err;
 }
 
-void dcf_client_stop(DCFClient* client) {
-    if (!client) return;
-    // Stop gRPC or plugin transport (placeholder)
-}
-
-void dcf_client_free(DCFClient* client) {
-    if (!client) return;
-    cJSON_Delete(client->config);
-    plugin_manager_free(client->plugin_manager);
-    free(client->redundancy); // Handled by dcf_redundancy_free internally
-    free(client);
+DCFError dcf_client_receive_message(DCFClient* client, char** message_out) {
+    if (!client || !message_out) return DCF_ERR_NULL_PTR;
+    if (!client->running) return DCF_ERR_INVALID_STATE;
+    char* received = dcf_networking_receive(client->net);
+    if (!received) return DCF_ERR_NETWORK_FAIL;
+    *message_out = dcf_deserialize_message(received);
+    free(received);
+    if (!*message_out) return DCF_ERR_DESERIALIZATION_FAIL;
+    return DCF_SUCCESS;
 }
