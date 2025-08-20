@@ -1,4 +1,4 @@
-```c
+
 #ifndef DCF_CLIENT_H
 #define DCF_CLIENT_H
 
@@ -27,4 +27,4 @@ DCFError dcf_client_send_message(DCFClient* client, const char* data, const char
 DCFError dcf_client_receive_message(DCFClient* client, char** message_out);
 
 #endif
-```
+
