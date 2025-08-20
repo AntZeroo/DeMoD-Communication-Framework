@@ -1,5 +1,6 @@
 #ifndef DCF_PLUGIN_MANAGER_H
 #define DCF_PLUGIN_MANAGER_H
+#include "dcf_config.h"
 #include "dcf_error.h"
 
 typedef struct {
@@ -9,11 +10,10 @@ typedef struct {
     void (*destroy)(void* self);
 } ITransport;
 
-typedef struct PluginManager PluginManager;
+typedef struct DCFPluginManager DCFPluginManager;
 
-PluginManager* plugin_manager_new(void);
-DCFError plugin_manager_load(PluginManager* manager, const char* plugin_path);
-ITransport* plugin_manager_get_transport(PluginManager* manager);
-void plugin_manager_free(PluginManager* manager);
-
+DCFPluginManager* dcf_plugin_manager_new(void);
+DCFError dcf_plugin_manager_load(DCFPluginManager* manager, DCFConfig* config);
+ITransport* dcf_plugin_manager_get_transport(DCFPluginManager* manager);
+void dcf_plugin_manager_free(DCFPluginManager* manager);
 #endif
