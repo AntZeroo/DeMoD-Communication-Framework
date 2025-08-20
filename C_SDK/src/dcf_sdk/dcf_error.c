@@ -14,6 +14,8 @@ const char* dcf_error_str(DCFError err) {
         case DCF_ERR_INVALID_STATE: return "Invalid client state";
         case DCF_ERR_ROUTE_NOT_FOUND: return "No route found";
         case DCF_ERR_GRPC_FAIL: return "gRPC operation failed";
+        case DCF_ERR_INVALID_ARG: return "Invalid argument";
+        case DCF_ERR_CONFIG_UPDATE_FAIL: return "Configuration update failed";
         case DCF_ERR_UNKNOWN: return "Unknown error";
     }
     return "Unknown error";
