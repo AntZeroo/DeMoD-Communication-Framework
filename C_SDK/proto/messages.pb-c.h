@@ -33,4 +33,23 @@ struct _HealthResponse {
 };
 #define HEALTH_RESPONSE__INIT { PROTOBUF_C_MESSAGE_INIT(&health_response__descriptor), 0, NULL }
 
+extern const ProtobufCMessageDescriptor dcf_message__descriptor;
+extern const ProtobufCMessageDescriptor health_request__descriptor;
+extern const ProtobufCMessageDescriptor health_response__descriptor;
+
+size_t dcf_message__get_packed_size(const DCFMessage *message);
+size_t dcf_message__pack(const DCFMessage *message, uint8_t *out);
+DCFMessage *dcf_message__unpack(ProtobufCAllocator *allocator, size_t len, const uint8_t *data);
+void dcf_message__free_unpacked(DCFMessage *message, ProtobufCAllocator *allocator);
+
+size_t health_request__get_packed_size(const HealthRequest *message);
+size_t health_request__pack(const HealthRequest *message, uint8_t *out);
+HealthRequest *health_request__unpack(ProtobufCAllocator *allocator, size_t len, the uint8_t *data);
+void health_request__free_unpacked(HealthRequest *message, ProtobufCAllocator *allocator);
+
+size_t health_response__get_packed_size(const HealthResponse *message);
+size_t health_response__pack(const HealthResponse *message, uint8_t *out);
+HealthResponse *health_response__unpack(ProtobufCAllocator *allocator, size_t len, const uint8_t *data);
+void health_response__free_unpacked(HealthResponse *message, ProtobufCAllocator *allocator);
+
 #endif
