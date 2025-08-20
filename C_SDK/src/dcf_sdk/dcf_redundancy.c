@@ -2,68 +2,92 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <limits.h>
 
 struct DCFRedundancy {
-    const char** peers;
+    char** peers;
     size_t peer_count;
+    int* rtt_cache;
     int rtt_threshold;
-    int* rtt_values; // Cached RTTs for each peer
+    DCFNetworking* networking;
+    bool running;
 };
 
-DCFError dcf_redundancy_init(DCFRedundancy** redundancy, const char** peers, size_t peer_count, int rtt_threshold) {
-    if (!redundancy || !peers || peer_count == 0) return DCF_ERR_NULL_PTR;
-    DCFRedundancy* r = calloc(1, sizeof(DCFRedundancy));
-    if (!r) return DCF_ERR_MALLOC_FAIL;
-    r->peers = calloc(peer_count, sizeof(char*));
-    if (!r->peers) { free(r); return DCF_ERR_MALLOC_FAIL; }
-    r->rtt_values = calloc(peer_count, sizeof(int));
-    if (!r->rtt_values) { free(r->peers); free(r); return DCF_ERR_MALLOC_FAIL; }
-    for (size_t i = 0; i < peer_count; i++) {
-        r->peers[i] = strdup(peers[i]);
-        if (!r->peers[i]) {
-            for (size_t j = 0; j < i; j++) free((char*)r->peers[j]);
-            free(r->peers); free(r->rtt_values); free(r);
-            return DCF_ERR_MALLOC_FAIL;
+DCFRedundancy* dcf_redundancy_new(void) {
+    DCFRedundancy* redundancy = calloc(1, sizeof(DCFRedundancy));
+    if (!redundancy) return NULL;
+    return redundancy;
+}
+
+DCFError dcf_redundancy_initialize(DCFRedundancy* redundancy, DCFConfig* config, DCFNetworking* networking) {
+    if (!redundancy || !config || !networking) return DCF_ERR_NULL_PTR;
+    redundancy->networking = networking;
+    DCFError err = dcf_config_get_peers(config, &redundancy->peers, &redundancy->peer_count);
+    if (err != DCF_SUCCESS) return err;
+    redundancy->rtt_cache = calloc(redundancy->peer_count, sizeof(int));
+    if (!redundancy->rtt_cache) return DCF_ERR_MALLOC_FAIL;
+    redundancy->rtt_threshold = dcf_config_get_rtt_threshold(config);
+    for (size_t i = 0; i < redundancy->peer_count; i++) {
+        int rtt;
+        err = dcf_redundancy_health_check(redundancy, redundancy->peers[i], &rtt);
+        if (err == DCF_SUCCESS) redundancy->rtt_cache[i] = rtt;
+        else redundancy->rtt_cache[i] = INT_MAX;
+    }
+    return DCF_SUCCESS;
+}
+
+DCFError dcf_redundancy_start(DCFRedundancy* redundancy) {
+    if (!redundancy) return DCF_ERR_NULL_PTR;
+    redundancy->running = true;
+    return DCF_SUCCESS;
+}
+
+DCFError dcf_redundancy_stop(DCFRedundancy* redundancy) {
+    if (!redundancy) return DCF_ERR_NULL_PTR;
+    redundancy->running = false;
+    return DCF_SUCCESS;
+}
+
+DCFError dcf_redundancy_get_optimal_route(DCFRedundancy* redundancy, const char* recipient, char** route_out) {
+    if (!redundancy || !recipient || !route_out) return DCF_ERR_NULL_PTR;
+    if (!redundancy->running) return DCF_ERR_INVALID_STATE;
+    int min_rtt = redundancy->rtt_threshold + 1;
+    size_t min_idx = 0;
+    bool found = false;
+    for (size_t i = 0; i < redundancy->peer_count; i++) {
+        if (strcmp(redundancy->peers[i], recipient) == 0) continue;
+        if (redundancy->rtt_cache[i] < min_rtt) {
+            min_rtt = redundancy->rtt_cache[i];
+            min_idx = i;
+            found = true;
         }
     }
-    r->peer_count = peer_count;
-    r->rtt_threshold = rtt_threshold;
-    *redundancy = r;
+    if (!found) return DCF_ERR_ROUTE_NOT_FOUND;
+    *route_out = strdup(redundancy->peers[min_idx]);
+    if (!*route_out) return DCF_ERR_MALLOC_FAIL;
     return DCF_SUCCESS;
 }
 
 DCFError dcf_redundancy_health_check(DCFRedundancy* redundancy, const char* peer, int* rtt_out) {
     if (!redundancy || !peer || !rtt_out) return DCF_ERR_NULL_PTR;
-    // Simulate RTT measurement (gRPC health check placeholder)
-    *rtt_out = rand() % 100; // Mock RTT < 100ms
+    if (!redundancy->running) return DCF_ERR_INVALID_STATE;
+    uint8_t* health_request = dcf_serialize_health_request(peer);
+    if (!health_request) return DCF_ERR_SERIALIZATION_FAIL;
+    char* response;
+    DCFError err = dcf_networking_send(redundancy->networking, health_request, strlen((char*)health_request), peer);
+    free(health_request);
+    if (err != DCF_SUCCESS) return err;
+    err = dcf_networking_receive(redundancy->networking, &response, NULL);
+    if (err != DCF_SUCCESS) return err;
+    *rtt_out = rand() % 100; // Mock RTT; replace with real measurement
+    free(response);
     return DCF_SUCCESS;
 }
 
-DCFError dcf_redundancy_measure_rtt(DCFRedundancy* redundancy, const char* peer, int* rtt_out) {
-    if (!redundancy || !peer || !rtt_out) return DCF_ERR_NULL_PTR;
-    for (size_t i = 0; i < redundancy->peer_count; i++) {
-        if (strcmp(redundancy->peers[i], peer) == 0) {
-            DCFError err = dcf_redundancy_health_check(redundancy, peer, rtt_out);
-            if (err == DCF_SUCCESS) redundancy->rtt_values[i] = *rtt_out;
-            return err;
-        }
-    }
-    return DCF_ERR_UNKNOWN;
-}
-
-DCFError dcf_redundancy_get_alternate_path(DCFRedundancy* redundancy, const char* target, char** path_out) {
-    if (!redundancy || !target || !path_out) return DCF_ERR_NULL_PTR;
-    // Simplified Dijkstra’s algorithm: select peer with lowest RTT
-    int min_rtt = redundancy->rtt_threshold + 1;
-    size_t min_idx = 0;
-    for (size_t i = 0; i < redundancy->peer_count; i++) {
-        if (strcmp(redundancy->peers[i], target) != 0 && redundancy->rtt_values[i] < min_rtt) {
-            min_rtt = redundancy->rtt_values[i];
-            min_idx = i;
-        }
-    }
-    if (min_rtt > redundancy->rtt_threshold) return DCF_ERR_NETWORK_FAIL;
-    *path_out = strdup(redundancy->peers[min_idx]);
-    if (!*path_out) return DCF_ERR_MALLOC_FAIL;
-    return DCF_SUCCESS;
+void dcf_redundancy_free(DCFRedundancy* redundancy) {
+    if (!redundancy) return;
+    for (size_t i = 0; i < redundancy->peer_count; i++) free(redundancy->peers[i]);
+    free(redundancy->peers);
+    free(redundancy->rtt_cache);
+    free(redundancy);
 }
