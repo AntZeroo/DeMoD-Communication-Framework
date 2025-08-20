@@ -6,7 +6,7 @@
 #include "dcf_plugin_manager.h"
 #include "dcf_error.h"
 
-typedef enum { CLIENT_MODE, SERVER_MODE, P2P_MODE } DCFMode;
+typedef enum { CLIENT_MODE, SERVER_MODE, P2P_MODE, AUTO_MODE } DCFMode;
 
 typedef struct DCFClient DCFClient;
 
