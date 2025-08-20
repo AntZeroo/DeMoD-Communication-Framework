@@ -1,12 +1,11 @@
 # DeMoD Communications Framework (DCF)
 
 **Version 5.0.0 | August 20, 2025**  
-**Developed by DeMoD LLC**  
-**Contact:** info@demodllc.example  
+**Developed by DeMoD LLC**   
 **License:** GNU General Public License v3.0 (GPL-3.0)  
-[![Build Status](https://github.com/demodllc/dcf/workflows/CI/badge.svg)](https://github.com/demodllc/dcf/actions)  
+
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)  
-[![Coverage](https://img.shields.io/badge/Coverage-85%25-green.svg)](https://github.com/demodllc/dcf)
+
 
 ## Overview
 The DeMoD Communications Framework (DCF) is a free and open-source software (FOSS) framework evolved from the DeMoD Secure Protocol, designed for low-latency, modular, and interoperable data exchange. It supports applications like IoT messaging, real-time gaming synchronization, distributed computing, and edge networking. DCF features a handshakeless design, efficient Protocol Buffers serialization, and a compatibility layer for UDP, TCP, WebSocket, and gRPC transports, enabling seamless peer-to-peer (P2P) networking with self-healing redundancy.
