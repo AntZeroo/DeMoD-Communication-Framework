@@ -77,8 +77,8 @@ graph TD
 ## Installation
 Clone the repository with submodules:
 ```bash
-git clone --recurse-submodules https://github.com/demodllc/dcf.git
-cd dcf
+git clone --recurse-submodules https://github.com/ALH477/DeMoD-Communication-Framework.git
+cd DeMoD-Communication-Framework
 ```
 
 ### Prerequisites
