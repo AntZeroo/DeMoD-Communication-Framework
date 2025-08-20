@@ -70,7 +70,7 @@ graph TD
 Clone the repository and follow language-specific setup:
 
 ```bash
-git clone https://github.com/demodllc/dcf.git
+git clone https://github.com/ALH477/DeMoD-Communication-Framework.git
 cd dcf
 ```
 
