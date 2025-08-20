@@ -201,7 +201,7 @@ flowchart TD
     AE[HandleP2PHealing Loop] --> AF[Sleep Interval]
     AF --> AG[Check Network Health]
     AG -->|Degraded| AH[Add Redundant Links & Log]
-    AG -->|OK| AE  // Loop back
+    AG -->|OK| AE 
     AH --> AE
 ```
 
