@@ -5,7 +5,7 @@ Version 5.0.0 | August 19, 2025
 The C SDK provides a modular, low-latency implementation of DCF for client, server, P2P, and AUTO modes using gRPC/Protobuf. Features include RTT-based grouping, Valgrind-compatible memory management, and a plugin system.
 
 ## Build
-cd c_sdk
+cd C_SDK
 mkdir build && cd build
 cmake .. && make
 
