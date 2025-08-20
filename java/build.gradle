@@ -1,0 +1,10 @@
+plugins { id 'java' }
+dependencies {
+    implementation 'com.google.protobuf:protobuf-java:3.25.5'
+    implementation 'io.grpc:grpc-netty:1.66.0'
+    implementation 'io.grpc:grpc-protobuf:1.66.0'
+    implementation 'io.grpc:grpc-stub:1.66.0'
+    implementation 'io.grpc:grpc-services:1.66.0' // For health
+    implementation 'com.google.code.gson:gson:2.11.0' // JSON
+    testImplementation 'junit:junit:4.13.2'
+}
