@@ -196,7 +196,7 @@ flowchart TD
     AB -->|Yes| AC[Heal Network]
     AB -->|No| AD[Return Data]
     AC --> AD
-    AD --> W  // Loop back
+    AD --> W 
 
     AE[HandleP2PHealing Loop] --> AF[Sleep Interval]
     AF --> AG[Check Network Health]
