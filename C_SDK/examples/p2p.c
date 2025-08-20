@@ -1,33 +1,44 @@
-#include <dcf_sdk/dcf_client.h>
-#include <dcf_sdk/dcf_redundancy.h>
+#include "dcf_client.h"
 #include <stdio.h>
 #include <uuid/uuid.h>
 
 int main() {
     DCFClient* client = dcf_client_new();
-    if (dcf_client_initialize(client, "config.json") != DCF_SUCCESS) {
-        fprintf(stderr, "Init failed: %s\n", dcf_error_str(DCF_ERR_UNKNOWN));
+    if (!client) {
+        fprintf(stderr, "Failed to create client: %s\n", dcf_error_str(DCF_ERR_MALLOC_FAIL));
         return 1;
     }
-    if (dcf_client_start(client) != DCF_SUCCESS) {
-        fprintf(stderr, "Start failed\n");
+    DCFError err = dcf_client_initialize(client, "config.json");
+    if (err != DCF_SUCCESS) {
+        fprintf(stderr, "Init failed: %s\n", dcf_error_str(err));
+        dcf_client_free(client);
         return 1;
     }
-    uuid_t target;
-    uuid_parse("123e4567-e89b-12d3-a456-426614174000", target);
+    err = dcf_client_start(client);
+    if (err != DCF_SUCCESS) {
+        fprintf(stderr, "Start failed: %s\n", dcf_error_str(err));
+        dcf_client_free(client);
+        return 1;
+    }
     char* response;
-    DCFError err = dcf_client_send_message(client, "P2P Hello!", target, &response);
+    err = dcf_client_send_message(client, "P2P Hello!", "123e4567-e89b-12d3-a456-426614174000", &response);
     if (err == DCF_SUCCESS) {
         printf("Response: %s\n", response);
         free(response);
     } else {
         fprintf(stderr, "Send failed: %s\n", dcf_error_str(err));
     }
-    int rtt;
-    if (dcf_redundancy_health_check(client->redundancy, target, &rtt) == DCF_SUCCESS) {
-        printf("RTT: %d ms\n", rtt);
+    char* message, *sender;
+    err = dcf_client_receive_message(client, &message, &sender);
+    if (err == DCF_SUCCESS) {
+        printf("Received from %s: %s\n", sender, message);
+        free(message);
+        free(sender);
     }
-    dcf_client_stop(client);
+    err = dcf_client_stop(client);
+    if (err != DCF_SUCCESS) {
+        fprintf(stderr, "Stop failed: %s\n", dcf_error_str(err));
+    }
     dcf_client_free(client);
     return 0;
 }
