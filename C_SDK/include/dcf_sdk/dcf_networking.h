@@ -7,7 +7,7 @@ typedef struct DCFNetworking DCFNetworking;
 
 DCFNetworking* dcf_networking_new(void);
 DCFError dcf_networking_initialize(DCFNetworking* networking, DCFConfig* config);
-DCFError dcf_networking_start(DCFNetworking* networking);
+DCFError dcf_networking_start(DCFNetworking* networking, DCFMode mode);
 DCFError dcf_networking_stop(DCFNetworking* networking);
 DCFError dcf_networking_send(DCFNetworking* networking, const uint8_t* data, size_t len, const char* recipient);
 DCFError dcf_networking_receive(DCFNetworking* networking, char** message_out, char** sender_out);
