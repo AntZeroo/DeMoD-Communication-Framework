@@ -1,4 +1,4 @@
-```c
+
 #ifndef DCF_REDUNDANCY_H
 #define DCF_REDUNDANCY_H
 
@@ -16,4 +16,4 @@ DCFError dcf_redundancy_health_check(DCFRedundancy* redundancy, const char* peer
 void dcf_redundancy_free(DCFRedundancy* redundancy);
 
 #endif
-```
+
