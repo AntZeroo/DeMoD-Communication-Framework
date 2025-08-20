@@ -36,6 +36,7 @@ DCFConfig* dcf_config_load(const char* path) {
         if (strcmp(mode->valuestring, "client") == 0) config->mode = CLIENT_MODE;
         else if (strcmp(mode->valuestring, "server") == 0) config->mode = SERVER_MODE;
         else if (strcmp(mode->valuestring, "p2p") == 0) config->mode = P2P_MODE;
+        else if (strcmp(mode->valuestring, "auto") == 0) config->mode = AUTO_MODE;
     }
     cJSON* node_id = cJSON_GetObjectItem(json, "node_id");
     if (cJSON_IsString(node_id)) config->node_id = strdup(node_id->valuestring);
@@ -53,57 +54,38 @@ DCFConfig* dcf_config_load(const char* path) {
     if (cJSON_IsString(host)) config->host = strdup(host->valuestring);
     cJSON* port = cJSON_GetObjectItem(json, "port");
     if (cJSON_IsNumber(port)) config->port = port->valueint;
-    cJSON* rtt = cJSON_GetObjectItem(json, "group_rtt_threshold");
+    cJSON* rtt = cJSON_GetObjectItem(json, "rtt_threshold");
     if (cJSON_IsNumber(rtt)) config->rtt_threshold = rtt->valueint;
     cJSON* plugins = cJSON_GetObjectItem(json, "plugins");
-    if (plugins) {
-        cJSON* transport = cJSON_GetObjectItem(plugins, "transport");
-        if (cJSON_IsString(transport)) config->plugin_path = strdup(transport->valuestring);
-    }
+    if (cJSON_IsString(plugins)) config->plugin_path = strdup(plugins->valuestring);
     cJSON_Delete(json);
     return config;
 }
 
-DCFError dcf_config_get_mode(DCFConfig* config, DCFMode* mode_out) {
-    if (!config || !mode_out) return DCF_ERR_NULL_PTR;
-    *mode_out = config->mode;
-    return DCF_SUCCESS;
-}
-
-DCFError dcf_config_get_node_id(DCFConfig* config, char** id_out) {
-    if (!config || !id_out) return DCF_ERR_NULL_PTR;
-    *id_out = config->node_id ? strdup(config->node_id) : NULL;
-    return DCF_SUCCESS;
-}
-
-DCFError dcf_config_get_peers(DCFConfig* config, char*** peers_out, size_t* count_out) {
-    if (!config || !peers_out || !count_out) return DCF_ERR_NULL_PTR;
-    *count_out = config->peer_count;
-    *peers_out = calloc(*count_out, sizeof(char*));
-    if (!*peers_out) return DCF_ERR_MALLOC_FAIL;
-    for (size_t i = 0; i < *count_out; i++) (*peers_out)[i] = strdup(config->peers[i]);
-    return DCF_SUCCESS;
-}
-
-DCFError dcf_config_get_host(DCFConfig* config, char** host_out) {
-    if (!config || !host_out) return DCF_ERR_NULL_PTR;
-    *host_out = config->host ? strdup(config->host) : NULL;
-    return DCF_SUCCESS;
-}
-
-int dcf_config_get_port(DCFConfig* config) {
-    if (!config) return -1;
-    return config->port;
-}
-
-int dcf_config_get_rtt_threshold(DCFConfig* config) {
-    if (!config) return -1;
-    return config->rtt_threshold;
-}
-
-DCFError dcf_config_get_plugin_path(DCFConfig* config, char** path_out) {
-    if (!config || !path_out) return DCF_ERR_NULL_PTR;
-    *path_out = config->plugin_path ? strdup(config->plugin_path) : NULL;
+DCFError dcf_config_update(DCFConfig* config, const char* key, const char* value) {
+    if (!config || !key || !value) return DCF_ERR_NULL_PTR;
+    if (strcmp(key, "mode") == 0) {
+        if (strcmp(value, "client") == 0) config->mode = CLIENT_MODE;
+        else if (strcmp(value, "server") == 0) config->mode = SERVER_MODE;
+        else if (strcmp(value, "p2p") == 0) config->mode = P2P_MODE;
+        else if (strcmp(value, "auto") == 0) config->mode = AUTO_MODE;
+        else return DCF_ERR_INVALID_ARG;
+    } else if (strcmp(key, "node_id") == 0) {
+        free(config->node_id);
+        config->node_id = strdup(value);
+    } else if (strcmp(key, "host") == 0) {
+        free(config->host);
+        config->host = strdup(value);
+    } else if (strcmp(key, "port") == 0) {
+        config->port = atoi(value);
+    } else if (strcmp(key, "rtt_threshold") == 0) {
+        config->rtt_threshold = atoi(value);
+    } else if (strcmp(key, "plugin_path") == 0) {
+        free(config->plugin_path);
+        config->plugin_path = strdup(value);
+    } else {
+        return DCF_ERR_INVALID_ARG;
+    }
     return DCF_SUCCESS;
 }
 
