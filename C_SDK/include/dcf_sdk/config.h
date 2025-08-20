@@ -12,5 +12,6 @@ DCFError dcf_config_get_host(DCFConfig* config, char** host_out);
 int dcf_config_get_port(DCFConfig* config);
 int dcf_config_get_rtt_threshold(DCFConfig* config);
 DCFError dcf_config_get_plugin_path(DCFConfig* config, char** path_out);
+DCFError dcf_config_update(DCFConfig* config, const char* key, const char* value);
 void dcf_config_free(DCFConfig* config);
 #endif
