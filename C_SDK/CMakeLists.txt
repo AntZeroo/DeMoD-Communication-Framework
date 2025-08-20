@@ -4,7 +4,7 @@ find_package(Protobuf-c REQUIRED)
 find_package(UUID REQUIRED)
 find_package(CJSON REQUIRED)
 find_package(gRPC CONFIG REQUIRED)
-find_package(Ncurses REQUIRED)  // For TUI
+find_package(Ncurses REQUIRED) 
 include_directories(include/dcf_sdk proto)
 add_library(dcf_sdk STATIC src/dcf_sdk/dcf_client.c src/dcf_sdk/dcf_config.c src/dcf_sdk/dcf_networking.c src/dcf_sdk/dcf_redundancy.c src/dcf_sdk/dcf_serialization.c src/dcf_sdk/dcf_plugin_manager.c src/dcf_sdk/dcf_interface.c src/dcf_sdk/grpc_wrapper.cpp proto/messages.pb-c.c)
 target_link_libraries(dcf_sdk PRIVATE protobuf-c uuid cjson gRPC::grpc++ ncurses)
